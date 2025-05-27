@@ -1,0 +1,13 @@
+{
+  "name": "RDM Controle",
+  "short_name": "RDM",
+  "start_url": "index_rdm_pwa.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#2563eb",
+  "icons": [{
+    "src": "icon.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }]
+}

@@ -1,0 +1,520 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>RDM Controle – Final Completo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+function excluirRDM(id) {
+  if (confirm("Tem certeza que deseja excluir esta RDM?")) {
+    const tx = db.transaction("rdms", "readwrite");
+    const store = tx.objectStore("rdms");
+    store.delete(id).onsuccess = () => carregarDados();
+  }
+}
+
+
+function exportarBanco() {
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  const request = store.getAll();
+  request.onsuccess = function () {
+    const dados = request.result;
+    const worksheet = XLSX.utils.json_to_sheet(dados);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "RDMs");
+    XLSX.writeFile(workbook, "controle.xlsx");
+  };
+}
+
+function importarBanco() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".xlsx, .xls";
+  input.onchange = function (event) {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const dados = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      const tx = db.transaction("rdms", "readwrite");
+      const store = tx.objectStore("rdms");
+      dados.forEach(item => store.put(item));
+      tx.oncomplete = () => carregarDados();
+    };
+    reader.readAsBinaryString(file);
+  };
+  input.click();
+}
+
+
+setTimeout(() => {
+  document.querySelectorAll('.status-cell select').forEach(sel => {
+    const val = sel.value;
+    sel.className = 'status-cell ' + (
+      val === "Planejada" ? "status-planejada" :
+      val === "Aguardando aprovação" ? "status-aprovacao" :
+      val === "Concluído com sucesso" ? "status-sucesso" :
+      val === "Concluído sem sucesso" ? "status-fracasso" :
+      val === "Cancelado" ? "status-cancelado" : ""
+    );
+  });
+}, 100);
+
+</script>
+  <style>
+body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    :root {
+      --bg: #f0f2f5;
+      --text: #1a1a1a;
+      --table-header: #f3f4f6;
+      --row-alt: #fafafa;
+      --btn-bg: #2563eb;
+      --btn-text: #fff;
+    }
+
+    .dark-mode {
+      --bg: #121212;
+      --text: #e4e4e4;
+      --table-header: #1f1f1f;
+      --row-alt: #1a1a1a;
+      --btn-bg: #3b82f6;
+      --btn-text: #fff;
+    }
+
+    h2 {
+      background: #1f2937;
+      color: white;
+      padding: 20px;
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .container {
+      max-width: 98%;
+      margin: auto;
+      padding: 20px;
+      background: var(--bg);
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+
+    .flex {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    input, select, button {
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.1s ease, background 0.2s;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background-color: var(--table-header);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tr:nth-child(even) {
+      background-color: var(--row-alt);
+    }
+
+    .checkbox-col label {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .status-cell select {
+      background-color: inherit;
+    }
+
+    .status-planejada { background: #fff3cd; }
+    .status-aprovacao { background: #ffe0b2; }
+    .status-sucesso   { background: #d4edda; }
+    .status-fracasso  { background: #f8d7da; }
+    .status-cancelado { background: #e2e3e5; }
+
+    .toggle-dark {
+      margin-left: auto;
+      background: #333;
+      color: white;
+    }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; }
+    h2 { background: #1f2937; color: white; padding: 20px; margin: 0; font-size: 20px; }
+    .container { max-width: 98%; margin: auto; padding: 20px; background: white; margin-top: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 15px; }
+    input, select, button { padding: 8px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; }
+    button:hover { background: #1e40af; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+    th, td { padding: 12px 10px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+    th { background-color: #f3f4f6; position: sticky; top: 0; z-index: 1; }
+    tr:nth-child(even) { background-color: #fafafa; }
+    .checkbox-col label { display: block; margin-bottom: 4px; }
+    td button { margin-right: 6px; }
+    body { font-family: Arial, sans-serif; background: #f7f9fc; margin: 0; }
+    h2 { background: #1f2937; color: white; padding: 20px; margin: 0; }
+    .container { max-width: 96%; margin: auto; padding: 20px; background: white; margin-top: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .flex { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+    label { font-weight: bold; font-size: 13px; }
+    input, select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; }
+    button { padding: 8px 12px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; font-weight: bold; }
+    button:hover { background: #1d4ed8; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+    th { background-color: #f3f4f6; }
+    .checkbox-col label { display: block; margin-bottom: 3px; }
+    .details { background-color: #f9fafb; }
+    .colapsado { display: none; }
+  
+body.dark-mode {
+  background: #121212;
+  color: #e4e4e4;
+}
+
+body.dark-mode .container {
+  background: #1e1e1e;
+}
+
+body.dark-mode th {
+  background-color: #2a2a2a;
+  color: #ffffff;
+}
+
+body.dark-mode td {
+  background-color: #181818;
+  color: #e0e0e0;
+}
+
+body.dark-mode input,
+body.dark-mode select {
+  background-color: #2b2b2b;
+  color: #ffffff;
+  border-color: #444;
+}
+
+body.dark-mode button {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+</style>
+
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log("Service Worker registrado!"));
+    }
+  </script>
+</head>
+<body>
+<h2>RDM Controle – Consulta Final</h2>
+<div class="container">
+  <div class="flex">
+    <button class="toggle-dark" onclick="document.body.classList.toggle('dark-mode')">🌙 Modo Escuro</button>
+    <button onclick="importarBanco()">📥 Importar Banco</button>
+    <button onclick="exportarBanco()">📤 Exportar Banco</button>
+    <input type="file" id="inputArquivo" accept=".xlsx, .xls" onchange="importarPlanilha(event)">
+    <div><label>Data de Início (De)</label><input type="date" id="filtroDataInicio" oninput="filtrar()"></div>
+    <div><label>Data de Início (Até)</label><input type="date" id="filtroDataFim" oninput="filtrar()"></div>
+    <button onclick="limparFiltro()">Limpar Filtro</button>
+        <label><input type="checkbox" id="mostrarOcultas" onchange="filtrar()"> Exibir RDM Ocultas</label>
+  </div>
+  <table id="tabelaRDM">
+    <thead>
+      <tr>
+        <th>RDM</th>
+        <th>Data Início</th>
+        <th>Hora Início</th>
+        <th>Data Fim</th>
+        <th>Hora Fim</th>
+        <th>Solicitante</th>
+        <th>Escopo</th>
+        <th>Status</th>
+        <th>Equipe</th>
+        <th style="min-width:130px;">Tipo de RDM</th>
+        <th>Detalhes</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody id="corpoTabela"></tbody>
+  </table>
+</div>
+
+<script>
+let db;
+
+function abrirDB() {
+  const req = indexedDB.open("RDMControleDB", 7);
+  req.onupgradeneeded = function(e) {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains("rdms")) {
+      db.createObjectStore("rdms", { keyPath: "id", autoIncrement: true });
+    }
+  };
+  req.onsuccess = function(e) {
+    db = e.target.result;
+    carregarDados();
+  };
+}
+
+function importarPlanilha(event) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, { type: 'binary' });
+    const dados = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: 1 });
+
+    const tx = db.transaction("rdms", "readwrite");
+    const store = tx.objectStore("rdms");
+    dados.forEach(r => {
+      store.add({
+        ...r,
+        oculto: false,
+        requests_text: "",
+        requests_status: "",
+        tipo_emergencial: false,
+        tipo_firewall: false,
+        tipo_request: false,
+        status_custom: "",
+        equipe: r.equipe || "",
+        liberacao: r.liberacao || ""
+      });
+    });
+    tx.oncomplete = carregarDados;
+  };
+  reader.readAsBinaryString(event.target.files[0]);
+}
+
+function carregarDados() {
+  const mostrarOcultas = document.getElementById("mostrarOcultas").checked;
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.getAll().onsuccess = function(e) {
+    const dados = e.target.result;
+    renderTabela(dados.filter(r => mostrarOcultas || !r.oculto));
+  };
+}
+
+function renderTabela(dados) {
+  const corpo = document.getElementById("corpoTabela");
+  corpo.innerHTML = "";
+
+  dados.forEach(rdm => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${rdm["RDM"] || ""}</td>
+      <td>${formatarData(rdm["Data Início"])}</td>
+      <td>${rdm["Hora Início"] || ""}</td>
+      <td>${formatarData(rdm["Data Fim"])}</td>
+      <td>${rdm["Hora Fim"] || ""}</td>
+      <td>${rdm["Nome do Solicitante"] || ""}</td>
+      <td>${rdm["Escopo"] || ""}</td>
+      <td>
+        <select onchange="atualizarCampo(${rdm.id}, 'status_custom', this.value)">
+          <option value="">--</option>
+          <option value="Planejada" ${rdm.status_custom === "Planejada" ? "selected" : ""}>Planejada</option>
+          <option value="Aguardando aprovação" ${rdm.status_custom === "Aguardando aprovação" ? "selected" : ""}>Aguardando aprovação</option>
+          <option value="Enviado RPI" ${rdm.status_custom === "Enviado RPI" ? "selected" : ""}>Enviado RPI</option>
+          <option value="Concluído com sucesso" ${rdm.status_custom === "Concluído com sucesso" ? "selected" : ""}>Concluído com sucesso</option>
+          <option value="Concluído sem sucesso" ${rdm.status_custom === "Concluído sem sucesso" ? "selected" : ""}>Concluído sem sucesso</option>
+          <option value="Cancelado" ${rdm.status_custom === "Cancelado" ? "selected" : ""}>Cancelado</option>
+        </select>
+      </td>
+      <td><input type="text" value="${rdm.equipe || ""}" onchange="atualizarCampo(${rdm.id}, 'equipe', this.value)"></td>
+      <td class="checkbox-col">
+        <label><input type="checkbox" ${rdm.tipo_emergencial ? "checked" : ""} onchange="atualizarCampo(${rdm.id}, 'tipo_emergencial', this.checked)"> Emergencial</label>
+        <label><input type="checkbox" ${rdm.tipo_firewall ? "checked" : ""} onchange="atualizarCampo(${rdm.id}, 'tipo_firewall', this.checked)"> Firewall</label>
+        <label><input type="checkbox" ${rdm.tipo_request ? "checked" : ""} onchange="atualizarCampo(${rdm.id}, 'tipo_request', this.checked)"> Request</label>
+      </td>
+      <td><button onclick="toggleDetalhes(${rdm.id})">🔍 Detalhes</button></td>
+      <td>
+      <div style="display:flex; gap:6px;">
+        <button onclick="alternarOcultamento(${rdm.id}, ${rdm.oculto})">${rdm.oculto ? "Exibir" : "Concluir"}</button>
+        <button onclick="excluirRDM(${rdm.id})">🗑️ Excluir</button>
+      </div>
+    </td>
+    `;
+    corpo.appendChild(tr);
+
+    const detalhes = document.createElement("tr");
+    detalhes.className = "details colapsado";
+    detalhes.id = "detalhes-" + rdm.id;
+    detalhes.innerHTML = `<td colspan="12">
+      <strong>Objetivo:</strong> ${rdm["Objetivo"] || ""}<br><br>
+      <strong>Requests:</strong>
+      <input type="text" value="${rdm.requests_text || ""}" onchange="atualizarCampo(${rdm.id}, 'requests_text', this.value)">
+      <select onchange="atualizarCampo(${rdm.id}, 'requests_status', this.value)">
+        <option value="">--</option>
+        <option value="Aguardando evidência" ${rdm.requests_status === "Aguardando evidência" ? "selected" : ""}>Aguardando evidência</option>
+        <option value="Anexado evidência" ${rdm.requests_status === "Anexado evidência" ? "selected" : ""}>Anexado evidência</option>
+      </select><br><br>
+      <strong>Área:</strong> ${rdm["Área"] || ""}<br><br>
+      <strong>Liberação:</strong>
+      <input type="text" value="${rdm.liberacao || ""}" onchange="atualizarCampo(${rdm.id}, 'liberacao', this.value)">
+    </td>`;
+    corpo.appendChild(detalhes);
+  });
+}
+
+function formatarData(valor) {
+  if (typeof valor === "number") {
+    const d = new Date((valor - 25569 + 1) * 86400 * 1000);
+    return d.toLocaleDateString("pt-BR");
+  }
+  return valor || "";
+}
+
+function toggleDetalhes(id) {
+  document.getElementById("detalhes-" + id).classList.toggle("colapsado");
+}
+
+function atualizarCampo(id, campo, valor) {
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function(e) {
+    const data = e.target.result;
+    data[campo] = valor;
+    store.put(data);
+  };
+}
+
+function alternarOcultamento(id, estadoAtual) {
+  atualizarCampo(id, "oculto", !estadoAtual);
+  setTimeout(carregarDados, 100);
+}
+
+function limparFiltro() {
+  document.getElementById("filtroDataInicio").value = "";
+  document.getElementById("filtroDataFim").value = "";
+  carregarDados();
+}
+
+function filtrar() {
+  carregarDados();
+}
+
+function exportar() {
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.getAll().onsuccess = function(e) {
+    const dados = e.target.result.map(r => ({
+      ...r,
+      "Requests (Texto)": r.requests_text || "",
+      "Requests (Status)": r.requests_status || "",
+      "Tipo: Emergencial": r.tipo_emergencial ? "Sim" : "Não",
+      "Tipo: Firewall": r.tipo_firewall ? "Sim" : "Não",
+      "Tipo: Request": r.tipo_request ? "Sim" : "Não",
+      "Status": r.status_custom || "",
+      "Equipe": r.equipe || "",
+      "Liberação": r.liberacao || ""
+    }));
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "RDMs");
+    XLSX.writeFile(wb, "RDM_Controle.xlsx");
+  };
+}
+
+window.onload = abrirDB;
+
+function excluirRDM(id) {
+  if (confirm("Tem certeza que deseja excluir esta RDM?")) {
+    const tx = db.transaction("rdms", "readwrite");
+    const store = tx.objectStore("rdms");
+    store.delete(id).onsuccess = () => carregarDados();
+  }
+}
+
+
+function exportarBanco() {
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  const request = store.getAll();
+  request.onsuccess = function () {
+    const dados = request.result;
+    const worksheet = XLSX.utils.json_to_sheet(dados);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "RDMs");
+    XLSX.writeFile(workbook, "controle.xlsx");
+  };
+}
+
+function importarBanco() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".xlsx, .xls";
+  input.onchange = function (event) {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const dados = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      const tx = db.transaction("rdms", "readwrite");
+      const store = tx.objectStore("rdms");
+      dados.forEach(item => store.put(item));
+      tx.oncomplete = () => carregarDados();
+    };
+    reader.readAsBinaryString(file);
+  };
+  input.click();
+}
+
+
+setTimeout(() => {
+  document.querySelectorAll('.status-cell select').forEach(sel => {
+    const val = sel.value;
+    sel.className = 'status-cell ' + (
+      val === "Planejada" ? "status-planejada" :
+      val === "Aguardando aprovação" ? "status-aprovacao" :
+      val === "Concluído com sucesso" ? "status-sucesso" :
+      val === "Concluído sem sucesso" ? "status-fracasso" :
+      val === "Cancelado" ? "status-cancelado" : ""
+    );
+  });
+}, 100);
+
+</script>
+</body>
+</html>
