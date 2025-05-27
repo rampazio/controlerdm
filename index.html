@@ -62,6 +62,340 @@ setTimeout(() => {
   });
 }, 100);
 
+
+function editarLinha(id, botao) {
+  const linha = botao.closest("tr");
+  const campos = linha.querySelectorAll("td");
+
+  const labels = [
+    "RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante",
+    "Escopo", "Status", "Equipe", "Tipo de RDM"
+  ];
+
+  const original = [];
+  campos.forEach((td, index) => {
+    if (index >= 0 && index < 10) {
+      const valor = td.innerText.trim();
+      original.push(valor);
+
+      if (labels[index] === "Status") {
+        td.innerHTML = `<select>
+          <option>Planejada</option>
+          <option>Aguardando aprovação</option>
+          <option>Enviado RPI</option>
+          <option>Concluído com sucesso</option>
+          <option>Concluído sem sucesso</option>
+          <option>Cancelado</option>
+        </select>`;
+        td.querySelector("select").value = valor;
+      } else {
+        td.innerHTML = `<input type="text" value="${valor}">`;
+      }
+    }
+  });
+
+  botao.textContent = "💾 Salvar";
+  botao.onclick = () => salvarEdicao(id, linha, labels);
+}
+
+function salvarEdicao(id, linha, labels) {
+  const inputs = linha.querySelectorAll("input, select");
+  const valores = Array.from(inputs).map(el => el.value);
+
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    labels.forEach((label, i) => {
+      rdm[label] = valores[i];
+      if (label === "Status") rdm.status_custom = valores[i];
+    });
+    store.put(rdm);
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+  let campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">';
+  campos.forEach(c => {
+    const valor = colunas[0].innerText.trim();
+    form += `<label>${c}<input type="text" id="edit-${c}-${id}" value="${(colunas[0].dataset[c] || valor || "")}"></label>`;
+  });
+  form += '</div><br><button onclick="salvarEdicaoDetalhada(' + id + ')">💾 Salvar alterações</button></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) rdm[c] = input.value;
+      if (c === "status_custom") rdm.status_custom = input.value;
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">';
+  campos.forEach(({ key, label }) => {
+    form += `<label><b>${label}</b><input type="text" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><br><button onclick="salvarEdicaoDetalhada(' + id + ')">💾 Salvar alterações</button></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) el.value = rdm[key] || "";
+    });
+  };
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) rdm[c] = input.value;
+      if (c === "status_custom") rdm.status_custom = input.value;
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function formatarDataExcel(valor) {
+  const dias = parseFloat(valor);
+  if (isNaN(dias)) return valor;
+  const data = new Date((dias - 25569) * 86400 * 1000);
+  return data.toISOString().slice(0, 10);
+}
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:10px;">';
+  campos.forEach(({ key, label }) => {
+    const tipo = key.includes("Data") ? "date" : "text";
+    form += `<label><b>${label}</b><input type="${tipo}" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><div style="margin-top:12px;"><button onclick="salvarEdicaoDetalhada(' + id + ')" style="padding:10px 20px;">💾 Salvar alterações</button></div></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) {
+        let val = rdm[key] || "";
+        if (el.type === "date") {
+          el.value = formatarDataExcel(val);
+        } else {
+          el.value = val;
+        }
+      }
+    });
+  };
+}
+
+
+function formatarDataExcel(valor) {
+  const dias = parseFloat(valor);
+  if (isNaN(dias)) return valor;
+  const data = new Date((dias - 25569) * 86400 * 1000);
+  return data.toISOString().slice(0, 10);
+}
+
+function formatarDataBR(dataIso) {
+  if (!dataIso || dataIso.length < 10) return dataIso;
+  const [ano, mes, dia] = dataIso.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:10px;">';
+  campos.forEach(({ key, label }) => {
+    const tipo = key.includes("Data") ? "date" : "text";
+    form += `<label><b>${label}</b><input type="${tipo}" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><div style="margin-top:12px;"><button onclick="salvarEdicaoDetalhada(' + id + ')" style="padding:10px 20px;">💾 Salvar alterações</button></div></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) {
+        let val = rdm[key] || "";
+        if (el.type === "date" && val.includes("/")) {
+          // converter dd/mm/yyyy para yyyy-mm-dd
+          const [d, m, y] = val.split("/");
+          val = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        }
+        if (el.type === "date") {
+          const d = new Date(val);
+          el.value = d.toISOString().slice(0, 10);
+        } else {
+          el.value = val;
+        }
+      }
+    });
+  };
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) {
+        let val = input.value;
+        if (input.type === "date") {
+          val = formatarDataBR(val);
+        }
+        rdm[c] = val;
+        if (c === "status_custom") rdm.status_custom = val;
+      }
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+document.addEventListener("click", function(event) {
+  document.querySelectorAll(".dropdown-menu").forEach(menu => {
+    if (!menu.contains(event.target) && !menu.previousElementSibling.contains(event.target)) {
+      menu.style.display = "none";
+    }
+  });
+});
+
+function toggleMenu(button) {
+  const menu = button.nextElementSibling;
+  const isVisible = menu.style.display === "block";
+  document.querySelectorAll(".dropdown-menu").forEach(m => m.style.display = "none");
+  menu.style.display = isVisible ? "none" : "block";
+}
+
 </script>
   <style>
 body {
@@ -245,9 +579,6 @@ body.dark-mode button {
 <h2>RDM Controle – Consulta Final</h2>
 <div class="container">
   <div class="flex">
-  <button id="installPWA" style="display:none; background:#444; color:white; font-weight:bold;">
-📲 Instalar App
-</button>
     <button class="toggle-dark" onclick="document.body.classList.toggle('dark-mode')">🌙 Modo Escuro</button>
     <button onclick="importarBanco()">📥 Importar Banco</button>
     <button onclick="exportarBanco()">📤 Exportar Banco</button>
@@ -367,6 +698,7 @@ function renderTabela(dados) {
       <td>
       <div style="display:flex; gap:6px;">
         <button onclick="alternarOcultamento(${rdm.id}, ${rdm.oculto})">${rdm.oculto ? "Exibir" : "Concluir"}</button>
+<button onclick="editarLinha(${rdm.id}, this)">✏️ Editar</button>
         <button onclick="excluirRDM(${rdm.id})">🗑️ Excluir</button>
       </div>
     </td>
@@ -510,27 +842,707 @@ setTimeout(() => {
   });
 }, 100);
 
+
+function editarLinha(id, botao) {
+  const linha = botao.closest("tr");
+  const campos = linha.querySelectorAll("td");
+
+  const labels = [
+    "RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante",
+    "Escopo", "Status", "Equipe", "Tipo de RDM"
+  ];
+
+  const original = [];
+  campos.forEach((td, index) => {
+    if (index >= 0 && index < 10) {
+      const valor = td.innerText.trim();
+      original.push(valor);
+
+      if (labels[index] === "Status") {
+        td.innerHTML = `<select>
+          <option>Planejada</option>
+          <option>Aguardando aprovação</option>
+          <option>Enviado RPI</option>
+          <option>Concluído com sucesso</option>
+          <option>Concluído sem sucesso</option>
+          <option>Cancelado</option>
+        </select>`;
+        td.querySelector("select").value = valor;
+      } else {
+        td.innerHTML = `<input type="text" value="${valor}">`;
+      }
+    }
+  });
+
+  botao.textContent = "💾 Salvar";
+  botao.onclick = () => salvarEdicao(id, linha, labels);
+}
+
+function salvarEdicao(id, linha, labels) {
+  const inputs = linha.querySelectorAll("input, select");
+  const valores = Array.from(inputs).map(el => el.value);
+
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    labels.forEach((label, i) => {
+      rdm[label] = valores[i];
+      if (label === "Status") rdm.status_custom = valores[i];
+    });
+    store.put(rdm);
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+  let campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">';
+  campos.forEach(c => {
+    const valor = colunas[0].innerText.trim();
+    form += `<label>${c}<input type="text" id="edit-${c}-${id}" value="${(colunas[0].dataset[c] || valor || "")}"></label>`;
+  });
+  form += '</div><br><button onclick="salvarEdicaoDetalhada(' + id + ')">💾 Salvar alterações</button></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) rdm[c] = input.value;
+      if (c === "status_custom") rdm.status_custom = input.value;
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">';
+  campos.forEach(({ key, label }) => {
+    form += `<label><b>${label}</b><input type="text" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><br><button onclick="salvarEdicaoDetalhada(' + id + ')">💾 Salvar alterações</button></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) el.value = rdm[key] || "";
+    });
+  };
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) rdm[c] = input.value;
+      if (c === "status_custom") rdm.status_custom = input.value;
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function formatarDataExcel(valor) {
+  const dias = parseFloat(valor);
+  if (isNaN(dias)) return valor;
+  const data = new Date((dias - 25569) * 86400 * 1000);
+  return data.toISOString().slice(0, 10);
+}
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:10px;">';
+  campos.forEach(({ key, label }) => {
+    const tipo = key.includes("Data") ? "date" : "text";
+    form += `<label><b>${label}</b><input type="${tipo}" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><div style="margin-top:12px;"><button onclick="salvarEdicaoDetalhada(' + id + ')" style="padding:10px 20px;">💾 Salvar alterações</button></div></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) {
+        let val = rdm[key] || "";
+        if (el.type === "date") {
+          el.value = formatarDataExcel(val);
+        } else {
+          el.value = val;
+        }
+      }
+    });
+  };
+}
+
+
+function formatarDataExcel(valor) {
+  const dias = parseFloat(valor);
+  if (isNaN(dias)) return valor;
+  const data = new Date((dias - 25569) * 86400 * 1000);
+  return data.toISOString().slice(0, 10);
+}
+
+function formatarDataBR(dataIso) {
+  if (!dataIso || dataIso.length < 10) return dataIso;
+  const [ano, mes, dia] = dataIso.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:10px;">';
+  campos.forEach(({ key, label }) => {
+    const tipo = key.includes("Data") ? "date" : "text";
+    form += `<label><b>${label}</b><input type="${tipo}" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><div style="margin-top:12px;"><button onclick="salvarEdicaoDetalhada(' + id + ')" style="padding:10px 20px;">💾 Salvar alterações</button></div></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) {
+        let val = rdm[key] || "";
+        if (el.type === "date" && val.includes("/")) {
+          // converter dd/mm/yyyy para yyyy-mm-dd
+          const [d, m, y] = val.split("/");
+          val = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        }
+        if (el.type === "date") {
+          const d = new Date(val);
+          el.value = d.toISOString().slice(0, 10);
+        } else {
+          el.value = val;
+        }
+      }
+    });
+  };
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) {
+        let val = input.value;
+        if (input.type === "date") {
+          val = formatarDataBR(val);
+        }
+        rdm[c] = val;
+        if (c === "status_custom") rdm.status_custom = val;
+      }
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+document.addEventListener("click", function(event) {
+  document.querySelectorAll(".dropdown-menu").forEach(menu => {
+    if (!menu.contains(event.target) && !menu.previousElementSibling.contains(event.target)) {
+      menu.style.display = "none";
+    }
+  });
+});
+
+function toggleMenu(button) {
+  const menu = button.nextElementSibling;
+  const isVisible = menu.style.display === "block";
+  document.querySelectorAll(".dropdown-menu").forEach(m => m.style.display = "none");
+  menu.style.display = isVisible ? "none" : "block";
+}
+
 </script>
 
 <script>
-let deferredPrompt;
-const installBtn = document.getElementById("installPWA");
+function exportarParaXLSX(nomeArquivo = "rdm-backup.xlsx") {
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  const request = store.getAll();
+  request.onsuccess = function () {
+    const dados = request.result;
+    const worksheet = XLSX.utils.json_to_sheet(dados);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "RDMs");
+    XLSX.writeFile(workbook, nomeArquivo);
+  };
+}
 
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  installBtn.style.display = "inline-block";
-});
+// Backup diário ao abrir
+window.addEventListener("DOMContentLoaded", () => {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ultima = localStorage.getItem("ultimoBackup");
 
-installBtn?.addEventListener("click", () => {
-  installBtn.style.display = "none";
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => {
-      deferredPrompt = null;
-    });
+  if (ultima !== hoje) {
+    exportarParaXLSX(`rdm-backup-${hoje}.xlsx`);
+    localStorage.setItem("ultimoBackup", hoje);
   }
 });
+
+// Backup ao fechar
+window.addEventListener("beforeunload", () => {
+  const agora = new Date();
+  const nome = `rdm-backup-auto-exit-${agora.toISOString().slice(0, 10)}.xlsx`;
+  exportarParaXLSX(nome);
+});
+
+function editarLinha(id, botao) {
+  const linha = botao.closest("tr");
+  const campos = linha.querySelectorAll("td");
+
+  const labels = [
+    "RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante",
+    "Escopo", "Status", "Equipe", "Tipo de RDM"
+  ];
+
+  const original = [];
+  campos.forEach((td, index) => {
+    if (index >= 0 && index < 10) {
+      const valor = td.innerText.trim();
+      original.push(valor);
+
+      if (labels[index] === "Status") {
+        td.innerHTML = `<select>
+          <option>Planejada</option>
+          <option>Aguardando aprovação</option>
+          <option>Enviado RPI</option>
+          <option>Concluído com sucesso</option>
+          <option>Concluído sem sucesso</option>
+          <option>Cancelado</option>
+        </select>`;
+        td.querySelector("select").value = valor;
+      } else {
+        td.innerHTML = `<input type="text" value="${valor}">`;
+      }
+    }
+  });
+
+  botao.textContent = "💾 Salvar";
+  botao.onclick = () => salvarEdicao(id, linha, labels);
+}
+
+function salvarEdicao(id, linha, labels) {
+  const inputs = linha.querySelectorAll("input, select");
+  const valores = Array.from(inputs).map(el => el.value);
+
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    labels.forEach((label, i) => {
+      rdm[label] = valores[i];
+      if (label === "Status") rdm.status_custom = valores[i];
+    });
+    store.put(rdm);
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+  let campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">';
+  campos.forEach(c => {
+    const valor = colunas[0].innerText.trim();
+    form += `<label>${c}<input type="text" id="edit-${c}-${id}" value="${(colunas[0].dataset[c] || valor || "")}"></label>`;
+  });
+  form += '</div><br><button onclick="salvarEdicaoDetalhada(' + id + ')">💾 Salvar alterações</button></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) rdm[c] = input.value;
+      if (c === "status_custom") rdm.status_custom = input.value;
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">';
+  campos.forEach(({ key, label }) => {
+    form += `<label><b>${label}</b><input type="text" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><br><button onclick="salvarEdicaoDetalhada(' + id + ')">💾 Salvar alterações</button></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) el.value = rdm[key] || "";
+    });
+  };
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) rdm[c] = input.value;
+      if (c === "status_custom") rdm.status_custom = input.value;
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+function formatarDataExcel(valor) {
+  const dias = parseFloat(valor);
+  if (isNaN(dias)) return valor;
+  const data = new Date((dias - 25569) * 86400 * 1000);
+  return data.toISOString().slice(0, 10);
+}
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:10px;">';
+  campos.forEach(({ key, label }) => {
+    const tipo = key.includes("Data") ? "date" : "text";
+    form += `<label><b>${label}</b><input type="${tipo}" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><div style="margin-top:12px;"><button onclick="salvarEdicaoDetalhada(' + id + ')" style="padding:10px 20px;">💾 Salvar alterações</button></div></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) {
+        let val = rdm[key] || "";
+        if (el.type === "date") {
+          el.value = formatarDataExcel(val);
+        } else {
+          el.value = val;
+        }
+      }
+    });
+  };
+}
+
+
+function formatarDataExcel(valor) {
+  const dias = parseFloat(valor);
+  if (isNaN(dias)) return valor;
+  const data = new Date((dias - 25569) * 86400 * 1000);
+  return data.toISOString().slice(0, 10);
+}
+
+function formatarDataBR(dataIso) {
+  if (!dataIso || dataIso.length < 10) return dataIso;
+  const [ano, mes, dia] = dataIso.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+function editarLinha(id, botao) {
+  const existente = document.getElementById("edicao-" + id);
+  if (existente) {
+    existente.remove();
+    return;
+  }
+
+  const tr = botao.closest("tr");
+  const nova = document.createElement("tr");
+  nova.id = "edicao-" + id;
+  nova.className = "details";
+  const colunas = tr.querySelectorAll("td");
+
+  const campos = [
+    { key: "RDM", label: "RDM" },
+    { key: "Data Início", label: "Data Início" },
+    { key: "Hora Início", label: "Hora Início" },
+    { key: "Data Fim", label: "Data Fim" },
+    { key: "Hora Fim", label: "Hora Fim" },
+    { key: "Nome do Solicitante", label: "Solicitante" },
+    { key: "Escopo", label: "Escopo" },
+    { key: "Objetivo", label: "Objetivo" },
+    { key: "Área", label: "Área" },
+    { key: "Equipe", label: "Equipe" },
+    { key: "status_custom", label: "Status" }
+  ];
+
+  let form = '<td colspan="13"><h4>✏️ Editar RDM</h4><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:10px;">';
+  campos.forEach(({ key, label }) => {
+    const tipo = key.includes("Data") ? "date" : "text";
+    form += `<label><b>${label}</b><input type="${tipo}" id="edit-${key}-${id}" style="width:100%"></label>`;
+  });
+  form += '</div><div style="margin-top:12px;"><button onclick="salvarEdicaoDetalhada(' + id + ')" style="padding:10px 20px;">💾 Salvar alterações</button></div></td>';
+  nova.innerHTML = form;
+  tr.parentNode.insertBefore(nova, tr.nextSibling);
+
+  const tx = db.transaction("rdms", "readonly");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(({ key }) => {
+      const el = document.getElementById("edit-" + key + "-" + id);
+      if (el) {
+        let val = rdm[key] || "";
+        if (el.type === "date" && val.includes("/")) {
+          // converter dd/mm/yyyy para yyyy-mm-dd
+          const [d, m, y] = val.split("/");
+          val = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+        }
+        if (el.type === "date") {
+          const d = new Date(val);
+          el.value = d.toISOString().slice(0, 10);
+        } else {
+          el.value = val;
+        }
+      }
+    });
+  };
+}
+
+function salvarEdicaoDetalhada(id) {
+  const campos = ["RDM", "Data Início", "Hora Início", "Data Fim", "Hora Fim", "Nome do Solicitante", "Escopo", "Objetivo", "Área", "Equipe", "status_custom"];
+  const tx = db.transaction("rdms", "readwrite");
+  const store = tx.objectStore("rdms");
+  store.get(id).onsuccess = function (e) {
+    const rdm = e.target.result;
+    campos.forEach(c => {
+      const input = document.getElementById("edit-" + c + "-" + id);
+      if (input) {
+        let val = input.value;
+        if (input.type === "date") {
+          val = formatarDataBR(val);
+        }
+        rdm[c] = val;
+        if (c === "status_custom") rdm.status_custom = val;
+      }
+    });
+    store.put(rdm);
+    document.getElementById("edicao-" + id)?.remove();
+    setTimeout(carregarDados, 100);
+  };
+}
+
+
+document.addEventListener("click", function(event) {
+  document.querySelectorAll(".dropdown-menu").forEach(menu => {
+    if (!menu.contains(event.target) && !menu.previousElementSibling.contains(event.target)) {
+      menu.style.display = "none";
+    }
+  });
+});
+
+function toggleMenu(button) {
+  const menu = button.nextElementSibling;
+  const isVisible = menu.style.display === "block";
+  document.querySelectorAll(".dropdown-menu").forEach(m => m.style.display = "none");
+  menu.style.display = isVisible ? "none" : "block";
+}
+
 </script>
 
 </body>
